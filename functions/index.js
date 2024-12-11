@@ -1,26 +1,93 @@
 const functions = require("firebase-functions");
-const { faker } = require('@faker-js/faker');
+const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 admin.initializeApp();
-
 const db = admin.firestore();
 
-// Initialize products array
-const products = [];
+// Firestore Trigger for new user creation
+exports.onUserCreate = onDocumentCreated("users/{userId}", (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+        console.log("No data associated with the event");
+        return;
+    }
+    const values = snapshot.data();
+    const timestamp = new Date().toISOString(); // Get the current timestamp in ISO format
 
-// Max number of products
-const LIMIT = 100;
-
-// Prepopulate products array with fake data
-for (let i = 0; i < LIMIT; i++) {
-    products.push({
-        id: faker.string.uuid(), // Unique identifier for each product
-        name: faker.commerce.productName(),
-        price: parseFloat(faker.commerce.price()), // Ensure price is a number
+    // send email or perform other actions
+    return admin.firestore().collection('logging').add({
+        description: `Email was sent to user with username:${values.username}`,
+        timestamp: timestamp // Include the timestamp
     });
-}
+});
 
-// Function to list all products
+// Firestore Trigger for user updates
+exports.onUserUpdate = onDocumentUpdated("users/{userId}", async (event) => {
+    const after = event.data; // New document snapshot
+    const before = event.data.previous; // Previous document snapshot
+
+    if (!after || !before) {
+        console.log("No data associated with the event");
+        return;
+    }
+
+    const newValues = after.data();
+    const previousValues = before.data();
+
+    if (newValues.username !== previousValues.username) {
+        const snapshot = await admin.firestore().collection('reviews')
+            .where('username', '==', previousValues.username)
+            .get();
+
+        let updatePromises = [];
+
+        snapshot.forEach(doc => {
+            updatePromises.push(
+                admin.firestore().collection('reviews').doc(doc.id).update({
+                    username: newValues.username
+                })
+            );
+        });
+
+        await Promise.all(updatePromises);
+    }
+});
+
+// Firestore Trigger for document deletion
+exports.onUserDelete = onDocumentDeleted("users/{userId}", (event) => {
+    const snap = event.data;
+    if (!snap) {
+        console.log("No data associated with the event");
+        return;
+    }
+    const data = snap.data();
+
+    // Perform your operations here
+    console.log(`User with ID ${event.params.userId} and data ${JSON.stringify(data)} was deleted.`);
+});
+
+// Firestore Trigger for modifying a user document
+exports.modifyUser = onDocumentWritten("users/{userId}", (event) => {
+    // Get an object with the current document values.
+    const document = event.data.after.data();
+
+    // Get an object with the previous document values
+    const previousValues = event.data.before.data();
+
+    if (document && previousValues) {
+        // Example: Log the modification
+        console.log(`User document modified. User ID: ${event.params.userId}`);
+        console.log('Current Values:', document);
+        console.log('Previous Values:', previousValues);
+
+        // Perform more operations here...
+    } else {
+        console.log("No document found for this event or it was deleted.");
+    }
+});
+
+
+// Example function to list all products
 exports.listProducts = functions.https.onCall(async (data, context) => {
     try {
         const productsSnapshot = await db.collection('products').get();
@@ -54,45 +121,23 @@ exports.addProduct = functions.https.onCall((data, context) => {
         name,
         price,
     };
-    products.push(newProduct);
 
     console.log('Product added:', newProduct);
     return { message: 'Product added successfully', product: newProduct };
 });
 
-// Example "helloFunction" to respond to HTTP requests
-exports.helloFunction = functions.https.onRequest((req, res) => {
-    res.json({ message: "Hello world from a serverless application." });
+exports.TestingDeployment = functions.https.onRequest((req, res) => {
+    res.json({ message: "Testing Deployment!" });
 });
 
-// Example "testFunction" to respond to HTTP requests
-exports.testFunction = functions.https.onRequest((req, res) => {
-    res.json({ message: "Hello testing from a serverless application." });
+exports.Deployment = functions.https.onRequest((req, res) => {
+    res.json({ message: "Testing Deployment!" });
 });
 
-
-// Example "testFunction" to respond to HTTP requests
-exports.testDeployment = functions.https.onRequest((req, res) => {
-    res.status(200).send("Deployment check successful!");
+exports.DeploymentCheck = functions.https.onRequest((req, res) => {
+    res.json({ message: "Testing Deployment!" });
 });
 
-exports.CheckingDeployment = functions.https.onRequest((req, res) => {
-    res.status(200).send("Deployment check successful!");
+exports.Deployed = functions.https.onRequest((req, res) => {
+    res.json({ message: "Testing Deployment!" });
 });
-
-
-
-// exports.newUserTrigger = functions.auth.user().onCreate(async (user) => {
-//     try {
-//         // Log the new user's details
-//         functions.logger.log("A new user signed in for the first time", user);
-
-//         // Further processing can be done here
-//         // For example, you could send a welcome email or update the user's profile
-
-//         return null; // Indicate successful execution
-//     } catch (error) {
-//         functions.logger.error("Error processing new user:", error);
-//         throw new functions.https.HttpsError('internal', 'Failed to process new user.');
-//     }
-// });
