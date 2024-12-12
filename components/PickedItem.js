@@ -44,7 +44,7 @@ const PickedItem = ({ title, description, imageUrl, price, deleteProduct, id }) 
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.description}>{description}</Text>
                 </View>
-                <Text style={styles.price}>${price}</Text> 
+                <Text style={styles.price}>${price}</Text>    
             </View>
 
             {/* Delete Button */}
