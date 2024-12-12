@@ -11,7 +11,7 @@ const ShoppingItem = (props) => {
   const [editedTitle, setEditedTitle] = useState(props.title); 
 
  
-  const updateIsChecked = async () => {
+  const updateIsChecked = async () => { 
     const shoppingRef = doc(db, "shopping", props.id);
     await updateDoc(shoppingRef, {
       isChecked: isChecked,
