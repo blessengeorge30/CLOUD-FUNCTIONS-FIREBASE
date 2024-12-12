@@ -36,7 +36,7 @@ const PickedItem = ({ title, description, imageUrl, price, deleteProduct, id }) 
                 )}
                 {/* Edit Icon */}
                 <TouchableOpacity onPress={() => setEditMode(true)} style={styles.editIcon}>
-                    <Icon name="edit" size={24} color="#fff" />
+                    <Icon name="edit" size={24} color="#fff"   />
                 </TouchableOpacity>
             </View>
             <View style={styles.infoContainer}>
